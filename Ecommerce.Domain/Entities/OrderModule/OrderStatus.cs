@@ -9,7 +9,13 @@ namespace Ecommerce.Domain.Entities.OrderModule
     public enum OrderStatus
     {
         Pending,
-        PaymentRecevied,
-        PaymenyFailed
+        PaymentFailed,
+        PaymentReceived,
+        Processing,
+        Shipped,
+        OutForDelivery,
+        Delivered,
+        Cancelled,
+        Refunded
     }
 }

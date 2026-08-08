@@ -4,111 +4,299 @@ using Ecommerce.Application.Interfaces;
 using Ecommerce.Domain.Entities;
 using Ecommerce.Domain.Entities.CartModule;
 using Ecommerce.Domain.Entities.OrderModule;
+using Ecommerce.Infrastructure.IdentityData;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ecommerce.Infrastructure.Services
 {
     public class OrderService : IOrderService
     {
-        private readonly IMapper mapper;
-        private readonly ICartRepository cartRepository;
-        private readonly IUnitOfWork unitOfWork;
+        private readonly EcommerceDbContext context;
+        private readonly StoreidentityDBContext identity;
 
-        public OrderService(IMapper mapper, ICartRepository cartRepository, IUnitOfWork unitOfWork)
+        public OrderService(EcommerceDbContext context ,StoreidentityDBContext identity)
         {
-            this.mapper = mapper;
-            this.cartRepository = cartRepository;
-            this.unitOfWork = unitOfWork;
+            this.context = context;
+            this.identity = identity;
         }
 
-        public async Task<OrderToReturnDTO> CreateOrder(OrderDTO orderDTO, string userId,string email)
+        public async Task<OrderToReturnDTO> CreateOrder(OrderDTO orderDTO, string userId, string email)
         {
-            var address = mapper.Map<OrderAddress>(orderDTO.Address);
+            var userExists = await identity.Users.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+                throw new Exception("User not found");
 
-            var cart = await cartRepository.GetUserCart(userId);
-            if (cart == null || cart.Items.Count == 0)
+            var cart = await context.Carts
+                .Include(c => c.Items)
+                .ThenInclude(i => i.Product)
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (cart == null || !cart.Items.Any())
                 throw new Exception("Cart is empty");
+
+            var deliveryMethod = await context.DeliveryMethods
+                .FirstOrDefaultAsync(d => d.Id == orderDTO.DeliveryMethodID);
+
+            if (deliveryMethod == null)
+                throw new Exception("Delivery Method Not Found");
+
+            var address = new OrderAddress
+            {
+                FirstName = orderDTO.Address.FirstName,
+                LastName = orderDTO.Address.LastName,
+                City = orderDTO.Address.City,
+                Street = orderDTO.Address.Street,
+                Address = orderDTO.Address.Address,
+                Country = orderDTO.Address.Country
+            };
 
             var orderItems = new List<OrderItem>();
 
             foreach (var item in cart.Items)
             {
-                var product = await unitOfWork.Repository<Product>()
-                    .GetByIdAsync(item.ProductId);
-
-                if (product == null)
-                    throw new Exception("Product not found");
-
-                orderItems.Add(CreateOrderItem(item, product));
+                orderItems.Add(new OrderItem
+                {
+                    Product = new ProductItemOrder
+                    {
+                        ProductId = item.Product.Id,
+                        ProductName = item.Product.Name,
+                        IMG = item.Product.ImageUrl
+                    },
+                    Quantity = item.Quantity,
+                    Price = item.Product.Price
+                });
             }
-
-            var deliveryMethod = await unitOfWork.Repository<DeliveryMethod>()
-                .GetByIdAsync(orderDTO.DeliveryMethodID);
-
-            if (deliveryMethod == null)
-                throw new Exception("Delivery method not found");
-
-            var subTotal = orderItems.Sum(x => x.Price * x.Quantity);
 
             var order = new Order
             {
+                UserEmail = email,
                 address = address,
+                DeliveryMethodId = deliveryMethod.Id,
                 DeliveryMethod = deliveryMethod,
                 Items = orderItems,
-                SubTotal = subTotal,
-                UserEmail = email
+                SubTotal = orderItems.Sum(i => i.Price * i.Quantity)
             };
 
-            await unitOfWork.Repository<Order>().AddAsync(order);
-            var result = await unitOfWork.CompleteAsync();
+            context.Orders.Add(order);
 
-            if (result <= 0)
-                throw new Exception("Order creation failed");
+            context.Carts.Remove(cart);
 
-            await cartRepository.ClearCartAsync(userId);
-            return mapper.Map<OrderToReturnDTO>(order);
-             
-        }
+            await context.SaveChangesAsync();
 
-        public async Task<IEnumerable<DeliveryMethodDTO>> GetAllDeliveryMethods()
-        {
-            var deliveryMethods = await unitOfWork.Repository<DeliveryMethod>()
-                .GetAllAsync();
-
-            return mapper.Map<IEnumerable<DeliveryMethodDTO>>(deliveryMethods);
-        }
-
-        private static OrderItem CreateOrderItem(CartItem item, Product product)
-        {
-            return new OrderItem
+            return new OrderToReturnDTO
             {
-                Product = new ProductItemOrder
+                Id = order.Id,
+                UserEmail = order.UserEmail,
+                Address = new OrderAddressDTO
                 {
-                    ProductId = product.Id,
-                    ProductName = product.Name,
-                    IMG = product.ImageUrl
+                    FirstName = order.address.FirstName,
+                    LastName = order.address.LastName,
+                    City = order.address.City,
+                    Street = order.address.Street,
+                    Address = order.address.Address,
+                    Country = order.address.Country
                 },
-                Price = product.Price,
-                Quantity = item.Quantity
+                DeliveryMethod = order.DeliveryMethod.ShortName,
+                OrderStatus = order.OrderStatus.ToString(),
+                OrderDate = order.OrderDate,
+                SubTotal = order.SubTotal,
+                Total = order.GetTotal(),
+
+                items = order.Items.Select(i => new OrderItemDTO
+                {
+                    ProductName = i.Product.ProductName,
+                    IMG = i.Product.IMG,
+                    Quantity = i.Quantity,
+                    Price = i.Price
+                }).ToList()
             };
         }
 
-
-        public async Task<IEnumerable<OrderToReturnDTO>> GetOrdersForUser(string userId)
+        public async Task<IEnumerable<OrderToReturnDTO>> GetUserOrders(string email)
         {
-            var Orders = await unitOfWork.Repository<Order>().GetAllAsync();
+            var orders = await context.Orders
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .Include(o => o.DeliveryMethod)
+                .Include(o => o.address)
+                .Where(o => o.UserEmail == email)
+                .ToListAsync();
 
-            return mapper.Map<IEnumerable<OrderToReturnDTO>>(Orders);
+            if (!orders.Any())
+                throw new Exception("No orders found");
+
+            return orders.Select(order => new OrderToReturnDTO
+            {
+                Id = order.Id,
+                UserEmail = order.UserEmail,
+
+                Address = new OrderAddressDTO
+                {
+                    FirstName = order.address.FirstName,
+                    LastName = order.address.LastName,
+                    City = order.address.City,
+                    Street = order.address.Street,
+                    Address = order.address.Address,
+                    Country = order.address.Country
+                },
+
+                DeliveryMethod = order.DeliveryMethod.ShortName,
+                OrderStatus = order.OrderStatus.ToString(),
+                OrderDate = order.OrderDate,
+                SubTotal = order.SubTotal,
+                Total = order.GetTotal(),
+
+                items = order.Items.Select(i => new OrderItemDTO
+                {
+                    ProductName = i.Product.ProductName,
+                    IMG = i.Product.IMG,
+                    Quantity = i.Quantity,
+                    Price = i.Price
+                }).ToList()
+            });
         }
 
-        public async Task<OrderToReturnDTO> GetOrderById(int id , string userId)
+        public async Task<OrderToReturnDTO> GetOrderByIdForUser(int orderId, string email)
         {
-            var Order = await unitOfWork.Repository<Order>().GetByIdAsync(id);
+            var User = identity.Users.FirstOrDefault(u => u.Email == email);
 
-            if (Order == null)
-                throw new Exception($"Order not found Order with id {id} Not Found ");
+            if (User == null)
+                throw new Exception("User not found");
 
-            return mapper.Map<OrderToReturnDTO>(Order);
+            var order = context.Orders
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .Include(o => o.DeliveryMethod)
+                .Include(o => o.address)
+                .FirstOrDefault(o => o.Id == orderId && o.UserEmail == email);
+
+            if (order == null)
+                throw new Exception("Order not found");
+
+            return new OrderToReturnDTO
+            {
+                Id = order.Id,
+                UserEmail = order.UserEmail,
+                OrderDate = order.OrderDate,
+                OrderStatus = order.OrderStatus.ToString(),
+                DeliveryMethod = order.DeliveryMethod.ShortName,
+                SubTotal = order.SubTotal,
+                Total = order.GetTotal(),
+
+                Address = new OrderAddressDTO
+                {
+                    FirstName = order.address.FirstName,
+                    LastName = order.address.LastName,
+                    City = order.address.City,
+                    Street = order.address.Street,
+                    Address = order.address.Address,
+                    Country = order.address.Country
+                },
+
+                items = order.Items.Select(i => new OrderItemDTO
+                {
+                    ProductName = i.Product.ProductName,
+                    IMG = i.Product.IMG,
+                    Quantity = i.Quantity,
+                    Price = i.Price
+                }).ToList()
+            };
+        }
+
+        public async Task<List<OrderToReturnDTO>> GetAllOrders()
+        {
+            var orders = await context.Orders
+    .Include(o => o.Items)
+        .ThenInclude(i => i.Product)
+    .Include(o => o.DeliveryMethod)
+    .Include(o => o.address)
+    .ToListAsync();
+
+            return orders.Select(order => new OrderToReturnDTO
+            {
+                Id = order.Id,
+                UserEmail = order.UserEmail,
+                OrderDate = order.OrderDate,
+                OrderStatus = order.OrderStatus.ToString(),
+                DeliveryMethod = order.DeliveryMethod.ShortName,
+                SubTotal = order.SubTotal,
+                Total = order.GetTotal(),
+                Address = new OrderAddressDTO
+                {
+                    FirstName = order.address.FirstName,
+                    LastName = order.address.LastName,
+                    City = order.address.City,
+                    Street = order.address.Street,
+                    Address = order.address.Address,
+                    Country = order.address.Country
+                },
+                items = order.Items.Select(i => new OrderItemDTO
+                {
+                    ProductName = i.Product.ProductName,
+                    IMG = i.Product.IMG,
+                    Quantity = i.Quantity,
+                    Price = i.Price
+                }).ToList()
+            }).ToList();
+        }
+
+
+        public async Task<OrderToReturnDTO> UpdateOrderState(int orderId, OrderStatus status)
+        {
+            var order = context.Orders
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .Include(o => o.DeliveryMethod)
+                .Include(o => o.address)
+                .FirstOrDefault(o => o.Id == orderId);
+
+            if (order == null)
+                throw new Exception("Order not found");
+
+            order.OrderStatus = status;
+
+            await context.SaveChangesAsync();
+
+            return new OrderToReturnDTO
+            {
+                Id = order.Id,
+                UserEmail = order.UserEmail,
+                OrderDate = order.OrderDate,
+                OrderStatus = order.OrderStatus.ToString(),
+                DeliveryMethod = order.DeliveryMethod.ShortName,
+                SubTotal = order.SubTotal,
+                Total = order.GetTotal(),
+
+                Address = new OrderAddressDTO
+                {
+                    FirstName = order.address.FirstName,
+                    LastName = order.address.LastName,
+                    City = order.address.City,
+                    Street = order.address.Street,
+                    Address = order.address.Address,
+                    Country = order.address.Country
+                },
+
+                items = order.Items.Select(i => new OrderItemDTO
+                {
+                    ProductName = i.Product.ProductName,
+                    IMG = i.Product.IMG,
+                    Quantity = i.Quantity,
+                    Price = i.Price
+                }).ToList()
+            };
+        }
+        public async Task<IEnumerable<DeliveryMethod>> GetAllDeliveryMethods()
+        {
+            var deliveryMethods = await context.DeliveryMethods.ToListAsync();
+
+            return deliveryMethods;
+        }
+
+        public List<string> GetOrderStatuses()
+        {
+            return Enum.GetNames<OrderStatus>().ToList();
         }
     }
 }

@@ -19,7 +19,7 @@ namespace Ecommerce.Infrastructure.IdentityData.DataSeed
                 await roleManager.CreateAsync(new IdentityRole("User"));
         }
 
-
+        
         public static async Task SeedAdmin(UserManager<ApplicationUser> userManager)
         {
             var email = "admin@store.com";

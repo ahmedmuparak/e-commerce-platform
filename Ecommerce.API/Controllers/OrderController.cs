@@ -5,6 +5,7 @@ using Ecommerce.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Ecommerce.Domain.Entities.OrderModule;
 
 namespace Ecommerce.API.Controllers
 {
@@ -34,30 +35,55 @@ namespace Ecommerce.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("delivery-methods")]
-        public async Task<ActionResult<IEnumerable<DeliveryMethodDTO>>> GetDeliveryMethods()
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> GetOrderForSpecificUser()
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            var result = await orderService.GetUserOrders(email);
+
+            return Ok(result);
+        }
+
+        [HttpGet("{orderId}")]
+        [Authorize]
+        public async Task<IActionResult> GetOrderByIdForUser(int orderId)
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            var result = await orderService.GetOrderByIdForUser(orderId, email);
+            return Ok(result);
+        }
+
+        [HttpGet("GetAllOrders")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllOrders()
+        {
+            var result = await orderService.GetAllOrders();
+            return Ok(result);
+        }
+
+        [HttpPut("{orderId}/status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateOrderState(int orderId, [FromBody] OrderStatus status)
+        {
+            var result = await orderService.UpdateOrderState(orderId, status);
+            return Ok(result);
+        }
+
+        [HttpGet("GetAllDeliveryMethods")]
+        public async Task<IActionResult> GetAllDeliveryMethods()
         {
             var result = await orderService.GetAllDeliveryMethods();
             return Ok(result);
         }
 
-        [HttpGet]
-        [Authorize]
-        public async Task<IActionResult> GetOrderForSpecificUser()
+        [HttpGet("GetAllOrderStatus")]
+        public IActionResult GetAllOrderStatus()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await orderService.GetOrdersForUser(userId);
+            var result = orderService.GetOrderStatuses();
+
             return Ok(result);
-        }
-
-        [HttpGet("{id}")]
-        [Authorize]
-        public async Task<IActionResult> GetOrderByIdForSpecificUser(int id)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await orderService.GetOrderById(id, userId);
-
-            return Ok(result); 
         }
     }
 }

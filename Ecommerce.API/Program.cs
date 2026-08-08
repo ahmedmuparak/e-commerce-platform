@@ -5,7 +5,6 @@ using Ecommerce.Domain.Entities.IdentityModule;
 using Ecommerce.Infrastructure;
 using Ecommerce.Infrastructure.IdentityData;
 using Ecommerce.Infrastructure.IdentityData.DataSeed;
-using Ecommerce.Infrastructure.MappingProfile;
 using Ecommerce.Infrastructure.Repositories;
 using Ecommerce.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -118,16 +117,12 @@ namespace Ecommerce.API
             builder.Services.AddScoped<ICartRepository, CartRepository>();
             builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
             builder.Services.AddScoped<ICartService, CartService>();
-            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             // Services
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IAuthService, AuthenticationService>();
 
-            builder.Services.AddAutoMapper(cfg =>
-            {
-                cfg.AddProfile<OrderProfile>();
-            });
+
 
             var app = builder.Build();
 

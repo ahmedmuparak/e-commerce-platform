@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj": {}
+    "D:\\ASP .NET\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj": {}
   },
   "projects": {
-    "D:\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj": {
+    "D:\\ASP .NET\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj",
+        "projectUniqueName": "D:\\ASP .NET\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj",
         "projectName": "Ecommerce.Domain",
-        "projectPath": "D:\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj",
+        "projectPath": "D:\\ASP .NET\\API\\Ecommerce\\Ecommerce.Domain\\Ecommerce.Domain.csproj",
         "packagesPath": "C:\\Users\\Ahmed Mubarak\\.nuget\\packages\\",
-        "outputPath": "D:\\API\\Ecommerce\\Ecommerce.Domain\\obj\\",
+        "outputPath": "D:\\ASP .NET\\API\\Ecommerce\\Ecommerce.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
