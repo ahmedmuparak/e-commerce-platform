@@ -18,5 +18,6 @@ namespace Ecommerce.Application.Interfaces
         Task<OrderToReturnDTO> UpdateOrderState(int orderId, OrderStatus status);
         Task<List<OrderToReturnDTO>> GetAllOrders();
         List<string> GetOrderStatuses();
+        Task<OrderToReturnDTO> GetOrderById(int orderId);
     }
 }

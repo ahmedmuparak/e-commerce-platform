@@ -3,6 +3,7 @@ using Ecommerce.Application.DTOs.OrderDTOs;
 using Ecommerce.Application.Interfaces;
 using Ecommerce.Domain.Entities;
 using Ecommerce.Domain.Entities.CartModule;
+using Ecommerce.Domain.Entities.NotificationModule;
 using Ecommerce.Domain.Entities.OrderModule;
 using Ecommerce.Infrastructure.IdentityData;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,11 +15,13 @@ namespace Ecommerce.Infrastructure.Services
     {
         private readonly EcommerceDbContext context;
         private readonly StoreidentityDBContext identity;
+        private readonly INotificationService notificationService;
 
-        public OrderService(EcommerceDbContext context ,StoreidentityDBContext identity)
+        public OrderService(EcommerceDbContext context ,StoreidentityDBContext identity , INotificationService notificationService)
         {
             this.context = context;
             this.identity = identity;
+            this.notificationService = notificationService;
         }
 
         public async Task<OrderToReturnDTO> CreateOrder(OrderDTO orderDTO, string userId, string email)
@@ -26,6 +29,11 @@ namespace Ecommerce.Infrastructure.Services
             var userExists = await identity.Users.AnyAsync(u => u.Id == userId);
             if (!userExists)
                 throw new Exception("User not found");
+
+            var userName = await identity.Users
+                .Where(u => u.Id == userId)
+                .Select(u => u.UserName)
+                .FirstOrDefaultAsync();
 
             var cart = await context.Carts
                 .Include(c => c.Items)
@@ -82,35 +90,30 @@ namespace Ecommerce.Infrastructure.Services
 
             context.Carts.Remove(cart);
 
-            await context.SaveChangesAsync();
-
-            return new OrderToReturnDTO
+            if (userExists != null)
             {
-                Id = order.Id,
-                UserEmail = order.UserEmail,
-                Address = new OrderAddressDTO
+                var notification = new Notification
                 {
-                    FirstName = order.address.FirstName,
-                    LastName = order.address.LastName,
-                    City = order.address.City,
-                    Street = order.address.Street,
-                    Address = order.address.Address,
-                    Country = order.address.Country
-                },
-                DeliveryMethod = order.DeliveryMethod.ShortName,
-                OrderStatus = order.OrderStatus.ToString(),
-                OrderDate = order.OrderDate,
-                SubTotal = order.SubTotal,
-                Total = order.GetTotal(),
+                    UserId = userId,
+                    Title = "Order Created",
+                    Message = $"{userName} created an order.",
+                    Type = NotificationType.OrderCreated,
+                    IsRead = false,
+                    Created = DateTime.UtcNow
+                };
 
-                items = order.Items.Select(i => new OrderItemDTO
-                {
-                    ProductName = i.Product.ProductName,
-                    IMG = i.Product.IMG,
-                    Quantity = i.Quantity,
-                    Price = i.Price
-                }).ToList()
-            };
+                await notificationService.CreateNotification(notification);
+
+                await context.SaveChangesAsync();
+
+                await notificationService.SendNotificationAsync(
+                    userId,
+                    notification
+                );
+            }
+
+
+            return MapOrderToDto(order);
         }
 
         public async Task<IEnumerable<OrderToReturnDTO>> GetUserOrders(string email)
@@ -157,23 +160,52 @@ namespace Ecommerce.Infrastructure.Services
             });
         }
 
-        public async Task<OrderToReturnDTO> GetOrderByIdForUser(int orderId, string email)
+        public async Task<OrderToReturnDTO> GetOrderById(int orderId)
         {
-            var User = identity.Users.FirstOrDefault(u => u.Email == email);
-
-            if (User == null)
-                throw new Exception("User not found");
-
-            var order = context.Orders
+            var order = await context.Orders
+                .AsNoTracking()
                 .Include(o => o.Items)
                     .ThenInclude(i => i.Product)
                 .Include(o => o.DeliveryMethod)
                 .Include(o => o.address)
-                .FirstOrDefault(o => o.Id == orderId && o.UserEmail == email);
+                .FirstOrDefaultAsync(o => o.Id == orderId);
 
             if (order == null)
                 throw new Exception("Order not found");
 
+            return MapOrderToDto(order);
+        }
+
+
+        public async Task<OrderToReturnDTO> GetOrderByIdForUser(
+            int orderId,
+            string email)
+        {
+            var userExists = await identity.Users
+                .AnyAsync(u => u.Email == email);
+
+            if (!userExists)
+                throw new Exception("User not found");
+
+            var order = await context.Orders
+                .AsNoTracking()
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .Include(o => o.DeliveryMethod)
+                .Include(o => o.address)
+                .FirstOrDefaultAsync(o =>
+                    o.Id == orderId &&
+                    o.UserEmail == email);
+
+            if (order == null)
+                throw new Exception("Order not found");
+
+            return MapOrderToDto(order);
+        }
+
+
+        private OrderToReturnDTO MapOrderToDto(Order order)
+        {
             return new OrderToReturnDTO
             {
                 Id = order.Id,
@@ -194,13 +226,15 @@ namespace Ecommerce.Infrastructure.Services
                     Country = order.address.Country
                 },
 
-                items = order.Items.Select(i => new OrderItemDTO
-                {
-                    ProductName = i.Product.ProductName,
-                    IMG = i.Product.IMG,
-                    Quantity = i.Quantity,
-                    Price = i.Price
-                }).ToList()
+                items = order.Items
+                    .Select(i => new OrderItemDTO
+                    {
+                        ProductName = i.Product.ProductName,
+                        IMG = i.Product.IMG,
+                        Quantity = i.Quantity,
+                        Price = i.Price
+                    })
+                    .ToList()
             };
         }
 
@@ -256,36 +290,46 @@ namespace Ecommerce.Infrastructure.Services
 
             order.OrderStatus = status;
 
-            await context.SaveChangesAsync();
 
-            return new OrderToReturnDTO
+            var user = await identity.Users
+    .FirstOrDefaultAsync(u => u.Email == order.UserEmail);
+
+            var notificationMessage = status switch
             {
-                Id = order.Id,
-                UserEmail = order.UserEmail,
-                OrderDate = order.OrderDate,
-                OrderStatus = order.OrderStatus.ToString(),
-                DeliveryMethod = order.DeliveryMethod.ShortName,
-                SubTotal = order.SubTotal,
-                Total = order.GetTotal(),
-
-                Address = new OrderAddressDTO
-                {
-                    FirstName = order.address.FirstName,
-                    LastName = order.address.LastName,
-                    City = order.address.City,
-                    Street = order.address.Street,
-                    Address = order.address.Address,
-                    Country = order.address.Country
-                },
-
-                items = order.Items.Select(i => new OrderItemDTO
-                {
-                    ProductName = i.Product.ProductName,
-                    IMG = i.Product.IMG,
-                    Quantity = i.Quantity,
-                    Price = i.Price
-                }).ToList()
+                OrderStatus.Pending => "Your order is pending.",
+                OrderStatus.PaymentFailed => "Payment for your order has failed.",
+                OrderStatus.PaymentReceived => "Payment for your order has been received.",
+                OrderStatus.Processing => "Your order is being processed.",
+                OrderStatus.Shipped => "Your order has been shipped.",
+                OrderStatus.OutForDelivery => "Your order is out for delivery.",
+                OrderStatus.Delivered => "Your order has been delivered.",
+                OrderStatus.Cancelled => "Your order has been cancelled.",
+                OrderStatus.Refunded => "Your order has been refunded.",
+                _ => "There is an update regarding your order."
             };
+
+            if (user != null)
+            {
+                var notification = new Notification
+                {
+                    UserId = user.Id,
+                    Title = "Order Updated",
+                    Message = notificationMessage,
+                    Type = NotificationType.OrderStatusChanged,
+                    IsRead = false,
+                    Created = DateTime.UtcNow
+                };
+
+                await notificationService.CreateNotification(notification);
+
+                await context.SaveChangesAsync();
+
+                await notificationService.SendNotificationAsync(
+                    user.Id,
+                    notification
+                );
+            }
+            return MapOrderToDto( order );
         }
         public async Task<IEnumerable<DeliveryMethod>> GetAllDeliveryMethods()
         {

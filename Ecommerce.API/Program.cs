@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Ecommerce.Infrastructure.Hubs;
 
 
 using System.Text;
@@ -65,6 +66,11 @@ namespace Ecommerce.API
                         Encoding.UTF8.GetBytes(builder.Configuration["JWTOptions:Key"]))
                 };
             });
+
+
+            //SignalR
+
+            builder.Services.AddSignalR();
 
             // Swagger
             builder.Services.AddEndpointsApiExplorer();
@@ -121,7 +127,7 @@ namespace Ecommerce.API
             // Services
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IAuthService, AuthenticationService>();
-
+            builder.Services.AddScoped<INotificationService, NotificationService>();
 
 
             var app = builder.Build();
@@ -155,6 +161,7 @@ namespace Ecommerce.API
 
             app.UseAuthentication();
             app.UseAuthorization();
+            app.MapHub<NotificationHub>("/notificationHub");
 
             app.MapControllers();
 

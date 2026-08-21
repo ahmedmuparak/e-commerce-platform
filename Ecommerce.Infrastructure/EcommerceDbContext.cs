@@ -1,15 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Ecommerce.Domain.Entities;
+using Ecommerce.Domain.Entities.CartModule;
+using Ecommerce.Domain.Entities.IdentityModule;
+using Ecommerce.Domain.Entities.NotificationModule;
+using Ecommerce.Domain.Entities.OrderModule;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
-using Ecommerce.Domain.Entities;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Ecommerce.Domain.Entities.IdentityModule;
-using Ecommerce.Domain.Entities.CartModule;
-using Ecommerce.Domain.Entities.OrderModule;
 
 namespace Ecommerce.Infrastructure
 {
@@ -29,7 +30,7 @@ namespace Ecommerce.Infrastructure
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<DeliveryMethod> DeliveryMethods { get; set; }
         public DbSet<OrderAddress> OrderAddresses { get; set; }
-
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -63,6 +63,14 @@ namespace Ecommerce.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("GetOrderByIdForAdmin")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetOrderByIdForAdmin(int orderId)
+        {
+            var result = await orderService.GetOrderById(orderId);
+            return Ok(result);
+        }
+
         [HttpPut("{orderId}/status")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateOrderState(int orderId, [FromBody] OrderStatus status)

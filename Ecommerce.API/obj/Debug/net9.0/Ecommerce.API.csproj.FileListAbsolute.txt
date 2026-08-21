@@ -361,3 +361,16 @@ D:\ASP .NET\API\Ecommerce\Ecommerce.API\obj\Debug\net9.0\refint\Ecommerce.API.dl
 D:\ASP .NET\API\Ecommerce\Ecommerce.API\obj\Debug\net9.0\Ecommerce.API.pdb
 D:\ASP .NET\API\Ecommerce\Ecommerce.API\obj\Debug\net9.0\Ecommerce.API.genruntimeconfig.cache
 D:\ASP .NET\API\Ecommerce\Ecommerce.API\obj\Debug\net9.0\ref\Ecommerce.API.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\System.Net.Http.Formatting.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.AspNetCore.Connections.Abstractions.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.AspNetCore.Http.Connections.Client.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.AspNetCore.Http.Connections.Common.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.AspNetCore.SignalR.Client.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.AspNetCore.SignalR.Client.Core.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.AspNetCore.SignalR.Common.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.AspNetCore.SignalR.Protocols.Json.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Microsoft.Extensions.Features.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Newtonsoft.Json.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\Newtonsoft.Json.Bson.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\System.Net.ServerSentEvents.dll
+D:\ASP .NET\API\Ecommerce\Ecommerce.API\bin\Debug\net9.0\System.Threading.Channels.dll
