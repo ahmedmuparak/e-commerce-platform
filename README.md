@@ -7,6 +7,7 @@ A robust and scalable **E-Commerce Web API** built using **ASP.NET Core**, follo
 ## 🚀 Features
 
 * 🔐 Authentication & Authorization (JWT)
+* 🔔 Notifications (Real-Time with SignalR)
 * 👤 User Registration & Login
 * 🛍️ Product Management
 * 📂 Category Management
@@ -34,6 +35,7 @@ Ecommerce.Domain        --> Core Entities
 ## 🛠️ Technologies Used
 
 * ASP.NET Core Web API (.NET 9)
+* SignalR
 * Entity Framework Core
 * SQL Server
 * ASP.NET Identity
@@ -69,6 +71,20 @@ GET/api/Authentication/CurrentUser
 GET/api/Authentication/address
 
 PUT/api/Authentication/address
+
+### 🔔 Notifications
+
+GET    /api/Notification
+
+GET    /api/Notification/unread
+
+PUT    /api/Notification/{id}/read
+
+PUT    /api/Notification/read-all
+
+DELETE /api/Notification/{id}
+
+DELETE /api/Notification/clear
 
 ### 📦 Products
 
